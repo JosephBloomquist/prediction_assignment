@@ -1,0 +1,102 @@
+---
+title: "Prediction assignment"
+author: "Joseph Bloomquist"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+# Prediction Assignment Writeup
+
+This is the course project assignment for the Building Data Products course within the John Hopkins Data specialization Certificate Program.
+
+## Executive Summary
+
+### Objective
+
+Use data from accelerometers on the belt, forearm, arm, and dumbbell of 6 participants to predict which exercise they performed referred to as "classe".
+
+### The Data
+
+The data was provided from: <http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har> It came in the form of training and test data csv files. For training purposes, I created a new dataset subsetted to exclude columns of missing or NA values.
+
+### Model Fitting & Diagnostics
+
+Using a random forest method, we achieved a perfect predictive model for the data. This was verified by using a confusion matrix and statistics. A summary of the model also showed *ZERO* OOB errors.
+
+### Conclusion
+
+After testing a testing subset and another data set for testing, we were able to build a perfect predictive model using the Random Forest Method.
+
+## Overview
+
+In this we will:
+
+-   Pull in our data and clean it up
+
+-   Split up the data into training and test sets.
+
+-   Build a model that can predict the "classe" in which participants did exercise
+
+-   Predict 20 different test cases using test data.
+
+```{r,}
+#Load libraries
+library(caret);library(randomForest);library(e1071)
+
+#Load data files already downloaded to local directory
+training <- read.csv("pml-training.csv", na.strings = c("NA", ""))
+testing <- read.csv("pml-testing.csv", na.strings = c("NA", ""))
+
+#Look at data structure
+str(training)
+
+#We want to predict classe, which is a type, but not a factor, so fixing
+training$classe <- as.factor(training$classe)
+
+#There are a lot of NA variables, do a count
+table(colSums(is.na(training)))
+
+#Subset data where there are no NAs
+training <- training[, colSums(is.na(training))==0]
+testing <- testing[, colSums(is.na(testing))==0]
+
+#Split training again for a model
+set.seed(08172024)
+inTrain <- createDataPartition(training$classe, p=0.75, list = F)
+trainSet <- training[inTrain,]
+testSet <- training[-inTrain,]
+
+```
+
+Now the data looks good and we can start using it.
+
+We normally would start by looking at **cor()** and **pairs()** to see what made sense for a linear or non-linear model.
+
+However, using a random forest, we can quickly let the algorithm figure it out.
+
+```{r,}
+
+#Train model
+#To quickly identify possible covariates, I'm using a random forest.
+set.seed(321)
+#modFit_rf <- train(classe ~ ., data=trainSet, method = "rf") - Was having performance issues
+modFit_rf <- randomForest(classe ~ ., data = trainSet)
+
+
+#Test on test set
+predictions <- predict(modFit_rf, testSet)
+confusionMatrix(predictions, testSet$classe)
+
+
+#Final test
+final_pred <- predict(modFit_rf, testing)
+summary(final_pred)
+```
+
+## Summary
+
+The output says accuracy is at a 1 which means the predictions were 100% accurate.
+
+There is a super high confidence level of .999, a p-value of < 2.2e-16 which is much smaller than the common alpha level of 0.05 indicating this is statistically significant, and kappa is at a 1 indicating a perfect model.
+
+There were no errors.
